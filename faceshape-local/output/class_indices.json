@@ -1,0 +1,9 @@
+{
+  "Diamond": 0,
+  "Heart": 1,
+  "Oblong": 2,
+  "Oval": 3,
+  "Pear": 4,
+  "Round": 5,
+  "Square": 6
+}

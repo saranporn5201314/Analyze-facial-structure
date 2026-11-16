@@ -1,0 +1,5 @@
+tensorflow==2.15.0
+kaggle==2.2.5
+scikit-learn==1.5.2
+pillow==10.4.0
+# tensorflowjs ติดตั้งแยกด้วย --no-deps (ดู README_SETUP.md ขั้นที่ 1)

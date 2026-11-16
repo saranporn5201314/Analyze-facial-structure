@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ส่องหน้า — วิเคราะห์รูปทรงใบหน้า</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<style>
+  :root{
+    --porcelain:#F6F2EC;
+    --ink:#262220;
+    --ink-soft:#5B534C;
+    --line: rgba(38,34,32,0.14);
+    --card:#FFFFFF;
+    --gold:#C68A3F;
+    --slate:#44586B;
+    --rose:#B2697A;
+    --taupe:#8A7458;
+    --teal:#3F8E8C;
+    --indigo:#5B4B8A;
+    --olive:#6B8E4E;
+    --radius-frame: 999px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --porcelain:#1B1815;
+      --ink:#F3EFE9;
+      --ink-soft:#BDB3A8;
+      --line: rgba(243,239,233,0.16);
+      --card:#242019;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--porcelain);
+    color:var(--ink);
+    font-family:'Inter','Noto Sans Thai',sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding: 56px 20px 80px;
+  }
+  main{
+    width:100%;
+    max-width:560px;
+  }
+  .eyebrow-free-header{
+    text-align:center;
+    margin-bottom:40px;
+  }
+  .wordmark{
+    font-family:'Fraunces','Noto Sans Thai',serif;
+    font-weight:600;
+    font-size:clamp(32px,6vw,44px);
+    letter-spacing:-0.01em;
+    margin:0 0 10px;
+  }
+  .tagline{
+    font-size:16px;
+    color:var(--ink-soft);
+    margin:0;
+    line-height:1.5;
+  }
+
+  .frame-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:24px;
+  }
+
+  .upload-frame{
+    width:240px;
+    height:240px;
+    border-radius:var(--radius-frame);
+    border:2px dashed var(--line);
+    background:var(--card);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow:hidden;
+    cursor:pointer;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  .upload-frame:hover{ border-color: var(--gold); }
+  .upload-frame:focus-visible{ outline:3px solid var(--gold); outline-offset:4px; }
+  .upload-frame img{
+    width:100%; height:100%; object-fit:cover;
+  }
+  .upload-hint{
+    text-align:center;
+    padding:0 28px;
+    color:var(--ink-soft);
+    font-size:14px;
+    line-height:1.5;
+  }
+  .upload-hint strong{ display:block; color:var(--ink); font-size:15px; margin-bottom:4px; }
+
+  input[type=file]{ display:none; }
+
+  button.primary{
+    font-family:inherit;
+    font-size:15px;
+    font-weight:600;
+    color:#fff;
+    background:var(--ink);
+    border:none;
+    border-radius:999px;
+    padding:14px 34px;
+    cursor:pointer;
+    transition: transform .15s ease, opacity .15s ease;
+  }
+  button.primary:disabled{ opacity:.4; cursor:not-allowed; }
+  button.primary:not(:disabled):hover{ transform: translateY(-1px); }
+  button.primary:focus-visible{ outline:3px solid var(--gold); outline-offset:3px; }
+
+  .status-line{
+    min-height:20px;
+    font-size:14px;
+    color:var(--ink-soft);
+    text-align:center;
+  }
+  .status-line.error{ color:var(--rose); }
+
+  section.result{
+    margin-top:48px;
+    display:none;
+  }
+  section.result.visible{ display:block; }
+
+  .result-headline{
+    text-align:center;
+    margin-bottom:28px;
+  }
+  .result-headline .shape-name{
+    font-family:'Fraunces','Noto Sans Thai',serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:clamp(28px,5vw,36px);
+    margin:0 0 6px;
+  }
+  .result-headline .shape-desc{
+    font-size:15px;
+    color:var(--ink-soft);
+    max-width:420px;
+    margin:0 auto;
+    line-height:1.6;
+  }
+
+  .bars{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .bar-row{
+    display:grid;
+    grid-template-columns: 98px 1fr 48px;
+    align-items:center;
+    gap:12px;
+    font-size:14px;
+  }
+  .bar-track{
+    height:10px;
+    border-radius:999px;
+    background:var(--line);
+    overflow:hidden;
+  }
+  .bar-fill{
+    height:100%;
+    border-radius:999px;
+    transition: width .6s cubic-bezier(.2,.8,.2,1);
+  }
+  .bar-pct{ text-align:right; color:var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+  footer{
+    text-align:center;
+    margin-top:64px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow-free-header">
+    <h1 class="wordmark">ส่องหน้า</h1>
+    <p class="tagline">อัปโหลดรูปใบหน้าตรง ๆ หนึ่งรูป แล้วดูว่าใบหน้าของคุณเข้าใกล้ทรงไหนมากที่สุด</p>
+  </div>
+
+  <div class="frame-wrap">
+    <label class="upload-frame" id="dropFrame" tabindex="0">
+      <input type="file" id="fileInput" accept="image/*" />
+      <div class="upload-hint" id="uploadHint">
+        <strong>เลือกรูปถ่าย</strong>
+        หน้าตรง แสงพอดี ไม่ใส่แว่น
+      </div>
+      <img id="previewImg" style="display:none" alt="รูปที่เลือก" />
+    </label>
+
+    <button class="primary" id="analyzeBtn" disabled>วิเคราะห์ใบหน้า</button>
+    <p class="status-line" id="statusLine"></p>
+  </div>
+
+  <section class="result" id="resultSection">
+    <div class="result-headline">
+      <p class="shape-name" id="shapeName">—</p>
+      <p class="shape-desc" id="shapeDesc"></p>
+    </div>
+    <div class="bars" id="barsContainer"></div>
+  </section>
+
+  <footer>
+    โมเดลทำงานในเบราว์เซอร์ของคุณทั้งหมด ไม่มีการส่งรูปออกไปที่เซิร์ฟเวอร์ใด ๆ<br>
+    ผลลัพธ์เป็นการประมาณจากภาพเท่านั้น ใช้เพื่อความบันเทิง ไม่ใช่การวินิจฉัยทางการแพทย์
+  </footer>
+</main>
+
+<script>
+const CLASS_META = {
+  Oval:    { th:"ทรงไข่",     color:"var(--taupe)",
+             desc:"สัดส่วนสมดุลที่สุด หน้าผากกว้างกว่าคางเล็กน้อย โหนกแก้มกว้างสุด" },
+  Round:   { th:"ทรงกลม",    color:"var(--gold)",
+             desc:"แก้มและคางมน เส้นหน้ากว้างใกล้เคียงกับความยาวหน้า ให้ความรู้สึกอ่อนโยน" },
+  Square:  { th:"ทรงเหลี่ยม", color:"var(--slate)",
+             desc:"กรามและหน้าผากเป็นมุมชัดเจน เส้นขอบหน้าหนักแน่น ดูมีสไตล์" },
+  Heart:   { th:"ทรงหัวใจ",  color:"var(--rose)",
+             desc:"หน้าผากกว้าง คางเรียวแหลม เป็นทรงที่พบได้ทั่วไปและดูมีมิติ" },
+  Diamond: { th:"ทรงเพชร",   color:"var(--teal)",
+             desc:"โหนกแก้มกว้างที่สุด หน้าผากและคางแคบกว่า ให้มิติที่ชัดเจน" },
+  Oblong:  { th:"ทรงยาว",    color:"var(--indigo)",
+             desc:"คล้ายทรงเหลี่ยมแต่หน้ายาวกว่าความกว้างอย่างชัดเจน" },
+  Pear:    { th:"ทรงลูกแพร์", color:"var(--olive)",
+             desc:"กรามกว้างที่สุด แล้วค่อย ๆ แคบขึ้นไปทางหน้าผาก" },
+};
+
+const IMG_SIZE = 224;
+const dropFrame   = document.getElementById('dropFrame');
+const fileInput   = document.getElementById('fileInput');
+const previewImg  = document.getElementById('previewImg');
+const uploadHint  = document.getElementById('uploadHint');
+const analyzeBtn  = document.getElementById('analyzeBtn');
+const statusLine  = document.getElementById('statusLine');
+const resultSection = document.getElementById('resultSection');
+const shapeNameEl = document.getElementById('shapeName');
+const shapeDescEl = document.getElementById('shapeDesc');
+const barsContainer = document.getElementById('barsContainer');
+
+let model = null;
+let classOrder = null; // array index -> class key, loaded from class_indices.json
+let currentImage = null;
+
+dropFrame.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') fileInput.click();
+});
+
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  previewImg.src = url;
+  previewImg.style.display = 'block';
+  uploadHint.style.display = 'none';
+  analyzeBtn.disabled = false;
+  resultSection.classList.remove('visible');
+  statusLine.textContent = '';
+  statusLine.classList.remove('error');
+  currentImage = new Image();
+  currentImage.src = url;
+});
+
+async function ensureModelLoaded() {
+  if (model) return true;
+  statusLine.textContent = 'กำลังโหลดโมเดล...';
+  try {
+    const [loadedModel, classRes] = await Promise.all([
+      tf.loadLayersModel('./model/model.json'),
+      fetch('./model/class_indices.json'),
+    ]);
+    const classIndices = await classRes.json(); // e.g. {"Heart":0,"Round":1,"Square":2}
+    classOrder = Object.keys(classIndices).sort(
+      (a, b) => classIndices[a] - classIndices[b]
+    );
+    model = loadedModel;
+    statusLine.textContent = '';
+    return true;
+  } catch (err) {
+    console.error(err);
+    statusLine.textContent =
+      'ยังไม่พบไฟล์โมเดลในโฟลเดอร์ model/ — วางไฟล์ model.json, .bin และ class_indices.json ที่ได้จากขั้นตอนเทรนไว้ที่นั่นก่อน';
+    statusLine.classList.add('error');
+    return false;
+  }
+}
+
+analyzeBtn.addEventListener('click', async () => {
+  if (!currentImage) return;
+  analyzeBtn.disabled = true;
+  const ok = await ensureModelLoaded();
+  if (!ok) { analyzeBtn.disabled = false; return; }
+
+  statusLine.textContent = 'กำลังวิเคราะห์...';
+  await currentImage.decode().catch(()=>{});
+
+  const prediction = tf.tidy(() => {
+    const tensor = tf.browser.fromPixels(currentImage)
+      .resizeBilinear([IMG_SIZE, IMG_SIZE])
+      .toFloat()
+      .div(255.0)
+      .expandDims(0);
+    return model.predict(tensor);
+  });
+
+  const probs = await prediction.data();
+  prediction.dispose();
+
+  const results = classOrder.map((key, i) => ({ key, prob: probs[i] }))
+    .sort((a, b) => b.prob - a.prob);
+
+  renderResults(results);
+  statusLine.textContent = '';
+  analyzeBtn.disabled = false;
+});
+
+function renderResults(results) {
+  const top = results[0];
+  const meta = CLASS_META[top.key] || { th: top.key, color: 'var(--ink)', desc: '' };
+  shapeNameEl.textContent = `ใบหน้า${meta.th}`;
+  shapeNameEl.style.color = meta.color;
+  shapeDescEl.textContent = meta.desc;
+
+  barsContainer.innerHTML = '';
+  results.forEach(({ key, prob }) => {
+    const m = CLASS_META[key] || { th: key, color: 'var(--ink)' };
+    const pct = Math.round(prob * 100);
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <span>${m.th}</span>
+      <span class="bar-track"><span class="bar-fill" style="width:0%;background:${m.color}"></span></span>
+      <span class="bar-pct">${pct}%</span>
+    `;
+    barsContainer.appendChild(row);
+    requestAnimationFrame(() => {
+      row.querySelector('.bar-fill').style.width = pct + '%';
+    });
+  });
+
+  resultSection.classList.add('visible');
+}
+</script>
+</body>
+</html>

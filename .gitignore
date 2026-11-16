@@ -1,0 +1,22 @@
+# Python virtual environment (สร้างใหม่ได้ตาม faceshape-local/README_SETUP.md)
+venv/
+__pycache__/
+*.pyc
+
+# Dataset จาก Kaggle (ดาวน์โหลดใหม่ได้ และไม่ควรเผยแพร่ซ้ำ) + ข้อมูลที่สคริปต์สร้างระหว่างเทรน
+faceshape-local/data/
+faceshape-local/data_7class/
+
+# แคชของ Firebase CLI
+.firebase/
+firebase-debug.log
+
+# ไฟล์ระบบ
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# credentials — ห้าม commit เด็ดขาด
+kaggle.json
+access_token
+.env
